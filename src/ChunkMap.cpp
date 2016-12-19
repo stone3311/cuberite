@@ -1539,38 +1539,38 @@ void cChunkMap::RemoveClientFromChunks(cClientHandle * a_Client)
 
 
 
-void cChunkMap::AddEntity(cEntity * a_Entity)
+void cChunkMap::AddEntity(StoredEntity a_Entity)
 {
 	cCSLock Lock(m_CSChunks);
 	cChunkPtr Chunk = GetChunk(a_Entity->GetChunkX(), a_Entity->GetChunkZ());
 	if (Chunk == nullptr)  // This will assert inside GetChunk in Debug builds
 	{
 		LOGWARNING("Entity at %p (%s, ID %d) spawning in a non-existent chunk, the entity is lost.",
-			static_cast<void *>(a_Entity), a_Entity->GetClass(), a_Entity->GetUniqueID()
+			static_cast<void *>(a_Entity.get()), a_Entity->GetClass(), a_Entity->GetUniqueID()
 		);
 		return;
 	}
-	Chunk->AddEntity(a_Entity);
+	Chunk->AddEntity(std::move(a_Entity));
 }
 
 
 
 
 
-void cChunkMap::AddEntityIfNotPresent(cEntity * a_Entity)
+void cChunkMap::AddEntityIfNotPresent(StoredEntity a_Entity)
 {
 	cCSLock Lock(m_CSChunks);
 	cChunkPtr Chunk = GetChunk(a_Entity->GetChunkX(), a_Entity->GetChunkZ());
 	if (Chunk == nullptr)  // This will assert inside GetChunk in Debug builds
 	{
 		LOGWARNING("Entity at %p (%s, ID %d) spawning in a non-existent chunk, the entity is lost.",
-			static_cast<void *>(a_Entity), a_Entity->GetClass(), a_Entity->GetUniqueID()
+			static_cast<void *>(a_Entity.get()), a_Entity->GetClass(), a_Entity->GetUniqueID()
 		);
 		return;
 	}
 	if (!Chunk->HasEntity(a_Entity->GetUniqueID()))
 	{
-		Chunk->AddEntity(a_Entity);
+		Chunk->AddEntity(std::move(a_Entity));
 	}
 }
 
@@ -1595,17 +1595,18 @@ bool cChunkMap::HasEntity(UInt32 a_UniqueID)
 
 
 
-void cChunkMap::RemoveEntity(cEntity * a_Entity)
+StoredEntity cChunkMap::RemoveEntity(cEntity & a_Entity)
 {
 	cCSLock Lock(m_CSChunks);
-	cChunkPtr Chunk = a_Entity->GetParentChunk();
+	cChunkPtr Chunk = a_Entity.GetParentChunk();
 
-	// Even if a chunk is not valid, it may still contain entities such as players; make sure to remove them (#1190)
 	if (Chunk == nullptr)
 	{
-		return;
+		return nullptr;
 	}
-	Chunk->RemoveEntity(a_Entity);
+
+	// Even if a chunk is not valid (the original code bailed out if the chunk wasn't valid), it may still contain entities such as players; make sure to remove them (#1190)
+	return Chunk->RemoveEntity(a_Entity);
 }
 
 

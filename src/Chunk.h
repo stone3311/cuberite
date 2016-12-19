@@ -74,6 +74,7 @@ class cChunk :
 	public cChunkDef  // The inheritance is "misused" here only to inherit the functions and constants defined in cChunkDef
 {
 public:
+
 	/** Represents the presence state of the chunk */
 	enum ePresence
 	{
@@ -88,7 +89,7 @@ public:
 		cChunk * a_NeighborXM, cChunk * a_NeighborXP, cChunk * a_NeighborZM, cChunk * a_NeighborZP,  // Neighbor chunks
 		cAllocationPool<cChunkData::sChunkSection> & a_Pool
 	);
-	cChunk(cChunk & other);
+	cChunk(cChunk & other) = delete;
 	~cChunk();
 
 	/** Returns true iff the chunk block data is valid (loaded / generated) */
@@ -261,8 +262,12 @@ public:
 	/** Returns true if theres any client in the chunk; false otherwise */
 	bool HasAnyClients(void) const;
 
-	void AddEntity(cEntity * a_Entity);
-	void RemoveEntity(cEntity * a_Entity);
+	void AddEntity(StoredEntity a_Entity);
+
+	/** Releases ownership of the given entity if it was found in this chunk.
+	Returns an owning reference to the found entity. */
+	StoredEntity RemoveEntity(cEntity & a_Entity);
+
 	bool HasEntity(UInt32 a_EntityID);
 
 	/** Calls the callback for each entity; returns true if all entities processed, false if the callback aborted by returning true */
@@ -523,7 +528,7 @@ private:
 
 	// A critical section is not needed, because all chunk access is protected by its parent ChunkMap's csLayers
 	std::vector<cClientHandle *> m_LoadedByClient;
-	cEntityList                  m_Entities;
+	std::vector<StoredEntity> m_Entities;
 	cBlockEntityList             m_BlockEntities;
 
 	/** Number of times the chunk has been requested to stay (by various cChunkStay objects); if zero, the chunk can be unloaded */
@@ -597,7 +602,7 @@ private:
 	bool GrowMelonPumpkin(int a_RelX, int a_RelY, int a_RelZ, BLOCKTYPE a_BlockType, MTRand & a_Random);
 
 	/** Called by Tick() when an entity moves out of this chunk into a neighbor; moves the entity and sends spawn / despawn packet to clients */
-	void MoveEntityToNewChunk(cEntity * a_Entity);
+	void MoveEntityToNewChunk(StoredEntity a_Entity);
 };
 
 typedef cChunk * cChunkPtr;
